@@ -1,0 +1,6 @@
+{
+  "name": "Bionic Commander",
+  "tagline": "Remake of the NES game Bionic Commando in Javascript using Phaser",
+  "body": "# BionicCommander\r\n\r\nRemake of the NES game Bionic Commando in Javascript using Phaser.\r\nArtwork is taken from the game, ripped by Mandemon.\r\n\r\n[Bionic Commander](index.html)\r\n",
+  "note": "Don't delete this file! It's used internally to help with page regeneration."
+}
