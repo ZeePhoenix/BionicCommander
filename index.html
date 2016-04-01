@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Bionic Commander</title>
+        <style>
+            body { margin: 0; background: #B4D9E7; }
+        </style>
+        <script src="phaser.js"></script>
+        <script src="Boot.j"></script>
+        <script src="Preloader.js"></script>
+        <script src="MainMenu.js"></script>
+        <script src="Game.js"></script>
+    </head>
+    <body>
+        <script>
+            (function() {
+                var game = new Phaser.Game(640, 480, Phaser.CANVAS, 'game');
+                game.state.add('Boot', Bionic.Boot);
+                game.state.add('Preloader', Bionic.Preloader);
+                game.state.add('MainMenu', Bionic.MainMenu);
+                game.state.add('Game', Bionic.Game);
+                game.state.start('Boot');
+            })();
+        </script>
+    </body>
+</html>
