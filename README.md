@@ -1,6 +1,5 @@
 # BionicCommander
 
-Remake of the NES game Bionic Commando in Javascript using Phaser.
+Basic Metroid style shooter in Javascript using Phaser.
 
-
-Player sprites are taken from the game, ripped by Mandemon.
+Sprites both player and enemy taken from gameartpartners.com

@@ -23,6 +23,6 @@ Bionic.Preloader.prototype = {
 
   },
   create: function() {
-    this.state.start('MainGame');
+    this.state.start('MainMenu');
   }
 };
