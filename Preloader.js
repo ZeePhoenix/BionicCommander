@@ -14,6 +14,8 @@ Bionic.Preloader.prototype = {
         this.load.spritesheet('radSpencer', 'Sprites/radSpencer.png', 34, 36);
         this.load.spritesheet('clawSheet', 'Sprites/claw.png', 42, 32);
         this.load.image('bullet', 'Sprites/bullet.png');
+        this.load.image('bazooka', 'Sprites/bazooka.png');
+        this.load.spritesheet('Sprite', 'Sprites/Sprite.png');
         this.load.spritesheet('enemy', 'Sprites/enemy1.png', 34, 36);
     },
     create: function() {
