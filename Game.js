@@ -53,7 +53,7 @@ Bionic.MainGame.prototype = {
 		this.d = this.input.keyboard.addKey(Phaser.Keyboard.D);
 		this.k = this.input.keyboard.addKey(Phaser.Keyboard.Z);
 
-		/*// Create Platforms
+		// Create Platforms
 		this.platforms = game.add.group();
 		this.platforms.enableBody = true;
 		this.platforms.physicsBodyType = game.physics.ARCADE;
@@ -73,12 +73,14 @@ Bionic.MainGame.prototype = {
 			platform.outOfBoundsKill = true;
 			platform.events.onKilled.add(this.platformDied, this);
 		}
-		*/
+		
 		
 		// ENEMY TEST
 		Bionic.Enemy.spawnEnemy(this.game, 200, 200, 'bat');
 		Bionic.enemies[0].sprite.animations.add('fly');
 		Bionic.enemies[0].sprite.animations.play('fly', 15, true);
+		
+		
 	},
 
 	update: function() {
@@ -89,14 +91,14 @@ Bionic.MainGame.prototype = {
 			case Bionic.STATE.inPlay:
 				Bionic.time += 1;
 				// Collisions
-				//this.game.physics.arcade.collide(Bionic.Player.sprite, this.platforms);
+				this.game.physics.arcade.collide(Bionic.Player.sprite, this.platforms);
 				//this.game.physics.arcade.collide(Bionic.Player.bullets, this.platforms); //Add method to destroy the bullets instead of colliding
 
 				// Player
 				Bionic.Player.checkControls(this.game, this.cursors, this.w, this.a, this.s, this.d, this.k, Bionic.time);
 				Bionic.Player.Draw();
 				// Move Platforms
-				//this.propogateVelocity();
+				this.propogateVelocity();
 				break;
 			case Bionic.STATE.dead:
 				break;
@@ -230,9 +232,6 @@ Bionic.Player = {
 			case this.STATE.FIRE:
 				this.sprite.animations.play('fire');
 				this.fire(this.game, Bionic.time);
-				/*this.sprite.animations.currentAnim.onComplete.add(function(){
-					Bionic.Player.updateState(Bionic.Player.STATE.IDLE);
-				});*/
 		}
 
 	},
@@ -242,7 +241,6 @@ Bionic.Player = {
 	},
 
 	checkControls: function(game, cursors, w, a, s, d, k) {
-		//if (this.sprite.body.velocity.x > this.maxSpeed || this.sprite.body.velocity.x <>)
 
 		// Check for movement depending on state
 		switch (this.currState) {
