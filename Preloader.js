@@ -2,23 +2,27 @@
 
 var Bionic = {};
 
-Bionic.Preloader = function(game){
-    Bionic.GAME_WIDTH = 640;
-    Bionic.GAME_HEIGHT = 480;
+Bionic.Preloader = function(game) {
+  Bionic.GAME_WIDTH = 640;
+  Bionic.GAME_HEIGHT = 480;
 };
 Bionic.Preloader.prototype = {
-    preload: function(){
-        this.load.image('background', 'Sprites/Background.png');
-        this.load.image('groundTile', 'Sprites/tile.png');
-        
-        this.load.spritesheet('radSpencer', 'Sprites/radSpencer.png', 34, 36);
-        this.load.spritesheet('clawSheet', 'Sprites/claw.png', 42, 32);
-        this.load.image('bullet', 'Sprites/bullet.png');
-        this.load.image('bazooka', 'Sprites/bazooka.png');
-        this.load.spritesheet('Sprite', 'Sprites/Sprite.png');
-        this.load.spritesheet('enemy', 'Sprites/enemy1.png', 34, 36);
-    },
-    create: function() {
-        this.state.start('MainGame');
-    }
+  preload: function() {
+    // Background / Map
+    this.load.image('background', 'Assets/Sprites/Background.png');
+    this.load.image('groundTile', 'Assets/Sprites/tile.png');
+
+    // Player and Bullets
+    this.load.image('bullet', 'Assets/Sprites/bullet.png');
+    this.load.image('bazooka', 'Assets/Sprites/bazooka.png');
+    this.load.spritesheet('Sprite', 'Assets/Sprites/Sprite.png');
+    this.load.atlasJSONArray('hero', 'Assets/Sprites/hero.png', 'Assets/JSON/hero.json');
+    
+    // Enemies
+    this.load.atlasJSONArray('bat', 'Assets/Sprites/bat2.png', 'Assets/JSON/bat2.json');
+
+  },
+  create: function() {
+    this.state.start('MainGame');
+  }
 };
