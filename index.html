@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <!doctype html>
 <!-- The Time Machine GitHub pages theme was designed and developed by Jon Rohan, on Feb 7, 2012. -->
 <!-- Follow him for fun. http://twitter.com/jonrohan. Tail his code on https://github.com/jonrohan -->
@@ -66,3 +67,32 @@ Artwork is taken from the game, ripped by Mandemon.</p>
   
 </body>
 </html>
+=======
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <title>Bionic Commander</title>
+        <style>
+            body { margin: 0; background: #B4D9E7; }
+        </style>
+        <script src="phaser.js" type="text/javascript"></script>
+        <script src="Preloader.js" type="text/javascript"></script>
+        <script src="MainMenu.js" type="text/javascript"></script>
+        <script src="Game.js" type="text/javascript"></script>
+        
+    </head>
+    <body>
+        <script>
+            "use strict";
+            window.onload = (function() {
+                var game = new Phaser.Game(1600, 800, Phaser.CANVAS, 'game');
+                game.state.add('Preloader', Bionic.Preloader);
+                //game.state.add('MainMenu', Bionic.MainMenu);
+                game.state.add('MainGame', Bionic.MainGame);
+                game.state.start('Preloader');
+            })();
+        </script>
+    </body>
+</html>
+>>>>>>> master
