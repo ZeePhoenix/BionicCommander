@@ -1,9 +1,11 @@
 Bionic.Player = {
 	// Player Properties
+	health: 100,
 	sprite: undefined,
 	facing: 'right',
 	scale: 0.25,
 	currState: undefined,
+	damageTime: undefined,
   // Movement
 	maxSpeed: 500,
   acceleration: 1500,
@@ -61,6 +63,8 @@ Bionic.Player = {
     this.bullets.setAll('scale.x', 2.5);
     this.bullets.setAll('scale.y', 2.5);
 		this.bullets.setAll('body.allowGravity', false);
+		
+		this.damageTime = 0;
 	},
 
 	Draw: function() {
@@ -118,9 +122,9 @@ Bionic.Player = {
 				this.sprite.animations.play('melee');
 				this.melee = true;
 				if(this.facing == 'left')
-					this.sprite.body.setSize(500, 480, 5, -20);
+					this.sprite.body.setSize(250, 480, 5, -20);
 				else
-					this.sprite.body.setSize(500, 480, 18, -20);
+					this.sprite.body.setSize(250, 480, 18, -20);
 				this.sprite.animations.getAnimation('melee').onComplete.add(function(){ 
 					Bionic.Player.updateState(Bionic.Player.STATE.IDLE); 
 					Bionic.Player.melee = false;
@@ -270,6 +274,7 @@ Bionic.Player = {
 
 	fire: function(game, time) {
 		if (time > this.nextFire && this.bullets.countDead() > 0) {
+			Bionic.sfx.play();
 			this.nextFire = time + this.fireRate;
 			var bullet = this.bullets.getFirstDead();
 			switch (this.facing) {
@@ -285,5 +290,9 @@ Bionic.Player = {
 					break;
 			}
 		}
+	},
+	
+	takeDamage: function(amount) {
+		this.health -= amount;
 	}
 };

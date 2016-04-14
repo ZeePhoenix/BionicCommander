@@ -5,9 +5,15 @@ var Bionic = Bionic || {};
 Bionic.MainGame = function() {
 	Bionic.score = 0;
 	Bionic.scoreText;
+	Bionic.healthText;
 	// Time
 	Bionic.time = 0;
 	Bionic.spawnDealy = 500;
+	Bionic.damageTime = 0;
+	Bionic.damageOffset = 50;
+	// Sound
+	Bionic.sfx;
+	Bionic.bkgSound;
 	
 	// Eenemy
 	Bionic.bats = [];
@@ -15,6 +21,7 @@ Bionic.MainGame = function() {
 	Bionic.eyes = [];
 	Bionic.eyeSprites = undefined;
 	Bionic.enemySpawnTime = 0;
+	Bionic.emmiter;
 	
 	this.map = undefined;
 	this.ground = undefined;
@@ -43,44 +50,54 @@ Bionic.MainGame.prototype = {
 		this.physics.startSystem(this.physics.ARCADE);
 		this.physics.gravity = true;
 		this.physics.arcade.gravity.y = 250;
-		Bionic.g = game;
 		// Set up map
 		this.background = this.add.tileSprite(0, 0, 1600, 1600, 'background');
+		this.background.fixedToCamera = true;
 		this.map = this.game.add.tilemap('level');
 		this.map.addTilesetImage('phase-2', 'tileSet');
 		this.map.setCollisionByExclusion([7, 207]);
 		this.groundLayer = this.map.createLayer('Ground');
-		//this.map.setCollision('Ground', true);
 		this.groundLayer.resizeWorld();
+		
+		// Set up HUD
+		Bionic.scoreText = game.add.text(16, 48, 'Score: 0', { fontSize: '32px', fill: '#000' });
+		Bionic.healthText = game.add.text(16, 16, 'Health: 100', { fontSize: '32px', fill: '#000' });
+		Bionic.scoreText.fixedToCamera = true;
+		Bionic.healthText.fixedToCamera = true;
+		
+		// Set up Sound
+		Bionic.sfx = game.add.audio('shot');
+		Bionic.bkgSound = game.add.audio('bkgMusic');
+		Bionic.bkgSound.loop = true;
+		
+		// Set up Emitter
+		Bionic.emmiter = game.add.emitter(0, 0, 100);
+		Bionic.emmiter.makeParticles('bullet');
+		Bionic.emmiter.gravity = 10;
+		
+		// Create Keys
+		this.cursors = this.input.keyboard.createCursorKeys();
+		this.z = this.input.keyboard.addKey(Phaser.Keyboard.Z);
+		this.x = this.input.keyboard.addKey(Phaser.Keyboard.X);
 		
 		// Set up Player
 		Bionic.Player.spawnPlayer(game, 100, 650, 'hero');
 		Bionic.Player.updateState(Bionic.Player.STATE.IDLE);
 		this.game.camera.follow(Bionic.Player.sprite);
 		
-		// HUD
-		Bionic.scoreText = game.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#000' });
-
-		// Create Keys
-		this.cursors = this.input.keyboard.createCursorKeys();
-		this.z = this.input.keyboard.addKey(Phaser.Keyboard.Z);
-		this.x = this.input.keyboard.addKey(Phaser.Keyboard.X);
-		
-		// Enemies
-		//Bionic.eyeSprites = this.game.add.group();
+		// Set up Enemies
 		Bionic.batSprites = this.game.add.group();
 		
 		for (i = 0; i < 10; i++) {
-			this.bat = new Bionic.Bat(this.game, (i * 32)+ 100, 200, 'bat', 0.2, Bionic.bats);
+			this.bat = new Bionic.Bat(this.game, (i * 150)+ 200, -20, 'bat', 0.2, Bionic.bats);
 			this.bat.init(this.game, Bionic.Player.sprite);
 		}
-		//this.eye = Bionic.Eye(this.game, 400, 400, 'eye', 0.2, Bionic.eyes);
-		//this.eye.init(this.game, Bionic.Player.sprite);
 	},
 
 	update: function() {
 		switch (Bionic.currState) {
 			case Bionic.STATE.waiting:
+				Bionic.bkgSound.play();
 				Bionic.currState = Bionic.STATE.inPlay;
 				break;
 			case Bionic.STATE.inPlay:
@@ -88,7 +105,6 @@ Bionic.MainGame.prototype = {
 				// Collisions
 				this.game.physics.arcade.collide(Bionic.Player.sprite, this.groundLayer);
 				this.game.physics.arcade.collide(Bionic.Player.bullets, this.groundLayer);
-				
 
 				// Player
 				Bionic.Player.update(this.game, this.cursors, this.z, this.x, Bionic.time, Bionic.bats);
@@ -98,31 +114,35 @@ Bionic.MainGame.prototype = {
 				for (i = 0; i < 10; i++) {
 					Bionic.bats[i].update();
 					Bionic.bats[i].move(Bionic.Player.sprite);
-					this.game.physics.arcade.collide(Bionic.batSprites);
-					this.game.physics.arcade.collide(Bionic.batSprites, this.groundLayer);
+					//this.game.physics.arcade.collide(Bionic.batSprites);
+					this.game.physics.arcade.collide(Bionic.bats[i].sprite, this.groundLayer);
 					this.game.physics.arcade.overlap(Bionic.Player.bullets, Bionic.batSprites, Bionic.bulletKill, null, this);
 					
-					if (this.checkOverlap(Bionic.Player.sprite, Bionic.bats[i].sprite)) {
-						Bionic.meleeKill(Bionic.Player, Bionic.bats[i].sprite)
+					if (this.checkOverlap(Bionic.Player.sprite, Bionic.bats[i].sprite) && Bionic.bats[i].sprite.alive) {
+						if (Bionic.Player.melee)
+							Bionic.meleeKill(Bionic.Player, Bionic.bats[i].sprite);
+						else {
+							if (Bionic.damageTime < Bionic.time){	
+								Bionic.Player.takeDamage(10);
+								Bionic.damageTime = Bionic.time + Bionic.damageOffset;
+							}
+						}
+						Bionic.scoreText.text = "Score: " + Bionic.score;
+						Bionic.healthText.text ="Health: " + Bionic.Player.health;
 					}
 				}
 				
-				//Bionic.bats.forEach(Bionic.Bat.update);
-				//Bionic.bats.forEach(Bionic.Bat.move(Bionic.Player.sprite));
-				
-				//Bionic.eyes[0].update();
-				//Bionic.eyes[0].move(Bionic.Player.sprite);
-				
 				// Revive dead enemies
 				if (Bionic.enemySpawnTime < Bionic.time && Bionic.batSprites.countDead() > 0) {
+					Bionic.enemySpawnTime = Bionic.time + Bionic.spawnDealy;
 					var b = Bionic.batSprites.getFirstDead();
 					b.revive();
-					b.reset(Math.random(0, 1000), -50);
+					b.reset(this.game.rnd.integerInRange(10, 1200), this.game.rnd.integerInRange(-20, -1200));
 				}
-				break;
-			case Bionic.STATE.dead:
-				break;
-			case Bionic.STATE.reset:
+				
+				if (Bionic.Player.health <= 0)
+					this.game.state.start('Preloader');
+					Bionic.currState = Bionic.STATE.waiting;
 				break;
 		}
 
@@ -171,18 +191,18 @@ inheritsFrom = function(child, parent){
 Bionic.bulletKill = function(target, bullet) {
 	Bionic.enemySpawnTime = (Bionic.time + Bionic.spawnDealy) * Math.random(0.5, 1.5);
 	bullet.kill();
+	Bionic.emmiter.x = target.x;
+	Bionic.emmiter.y = target.y;
+	Bionic.emmiter.start(true, 500, null, 10);
 	target.reset(0, -20);
 	target.kill();
 	Bionic.score += 5;
-	Bionic.scoreText.text = "Score: " + Bionic.score;
 };
 Bionic.hitWall = function(bullet, target) {
 	bullet.kill();
 };
 Bionic.meleeKill = function(player, target) {
-	if (Bionic.Player.melee) {
-		target.kill();
-		Bionic.score += 5;
-		Bionic.scoreText.text = "Score: " + Bionic.score;
-	}
+	target.kill();
+	Bionic.score += 5;
+	Bionic.scoreText.text = "Score: " + Bionic.score;
 };
