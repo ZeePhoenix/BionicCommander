@@ -4,20 +4,25 @@ var Bionic = Bionic || {};
 
 Bionic.MainGame = function() {
 	Bionic.score = 0;
+	Bionic.scoreText;
+	// Time
 	Bionic.time = 0;
-	Bionic.platformSpeed = 80;
-	Bionic.enemies = [];
-
-	this.background = undefined;
-
+	Bionic.spawnDealy = 500;
+	
+	// Eenemy
+	Bionic.bats = [];
+	Bionic.batSprites = undefined;
+	Bionic.eyes = [];
+	Bionic.eyeSprites = undefined;
+	Bionic.enemySpawnTime = 0;
+	
+	this.map = undefined;
+	this.ground = undefined;
+	
 	// Keys
 	this.cursors;
-	this.w;
-	this.a;
-	this.s;
-	this.d;
-	this.k; // Firing Key
-	this.l; // Melee Key
+	this.z; // Firing Key
+	this.x; // Melee Key
 
 	// Game States
 	Bionic.STATE = {
@@ -27,7 +32,8 @@ Bionic.MainGame = function() {
 		reset: 3
 	};
 	Bionic.currState;
-
+	
+	this.bat;
 };
 
 Bionic.MainGame.prototype = {
@@ -37,53 +43,39 @@ Bionic.MainGame.prototype = {
 		this.physics.startSystem(this.physics.ARCADE);
 		this.physics.gravity = true;
 		this.physics.arcade.gravity.y = 250;
-
+		Bionic.g = game;
 		// Set up map
 		this.background = this.add.tileSprite(0, 0, 1600, 1600, 'background');
-
+		this.map = this.game.add.tilemap('level');
+		this.map.addTilesetImage('phase-2', 'tileSet');
+		this.map.setCollisionByExclusion([7, 207]);
+		this.groundLayer = this.map.createLayer('Ground');
+		//this.map.setCollision('Ground', true);
+		this.groundLayer.resizeWorld();
+		
 		// Set up Player
-		Bionic.Player.spawnPlayer(game, 250, 650, 'hero');
+		Bionic.Player.spawnPlayer(game, 100, 650, 'hero');
 		Bionic.Player.updateState(Bionic.Player.STATE.IDLE);
+		this.game.camera.follow(Bionic.Player.sprite);
+		
+		// HUD
+		Bionic.scoreText = game.add.text(16, 16, 'Score: 0', { fontSize: '32px', fill: '#000' });
 
 		// Create Keys
 		this.cursors = this.input.keyboard.createCursorKeys();
-		this.w = this.input.keyboard.addKey(Phaser.Keyboard.W);
-		this.a = this.input.keyboard.addKey(Phaser.Keyboard.A);
-		this.s = this.input.keyboard.addKey(Phaser.Keyboard.S);
-		this.d = this.input.keyboard.addKey(Phaser.Keyboard.D);
-		this.k = this.input.keyboard.addKey(Phaser.Keyboard.Z);
-
-		// Create Platforms
-		this.platforms = game.add.group();
-		this.platforms.enableBody = true;
-		this.platforms.physicsBodyType = game.physics.ARCADE;
-		this.platforms.createMultiple(10, 'groundTile');
-		this.platforms.setAll('checkWorldBounds', true);
-		this.platforms.setAll('outOfBoundsKill', true);
-		this.platforms.setAll('body.mass', 15000);
-		this.platforms.setAll('body.allowGravity', false);
-		this.platforms.setAll('body.bounce', false);
-		this.platforms.setAll('bosy.friction', 40);
-		this.platforms.setAll('immovable', true);
-
-		// Set Platform starting positons
-		for (var i = 0; i < 8; i++) {
-			var platform = this.platforms.getChildAt(i);
-			platform.reset((i * 200) + 25, 700 - Math.floor(Math.random() * 450));
-			platform.scale.x = 8;
-			platform.checkWorldBounds = true;
-			platform.outOfBoundsKill = true;
-			platform.events.onKilled.add(this.platformDied, this);
+		this.z = this.input.keyboard.addKey(Phaser.Keyboard.Z);
+		this.x = this.input.keyboard.addKey(Phaser.Keyboard.X);
+		
+		// Enemies
+		//Bionic.eyeSprites = this.game.add.group();
+		Bionic.batSprites = this.game.add.group();
+		
+		for (i = 0; i < 10; i++) {
+			this.bat = new Bionic.Bat(this.game, (i * 32)+ 100, 200, 'bat', 0.2, Bionic.bats);
+			this.bat.init(this.game, Bionic.Player.sprite);
 		}
-
-
-		// ENEMY TEST
-		var bat  = Bionic.Bat(this.game, 200, 200, 'bat', 0.2);
-		bat.init();
-		//Bionic.enemies[0].sprite.animations.add('fly');
-		//Bionic.enemies[0].sprite.animations.play('fly', 15, true);
-
-
+		//this.eye = Bionic.Eye(this.game, 400, 400, 'eye', 0.2, Bionic.eyes);
+		//this.eye.init(this.game, Bionic.Player.sprite);
 	},
 
 	update: function() {
@@ -94,16 +86,39 @@ Bionic.MainGame.prototype = {
 			case Bionic.STATE.inPlay:
 				Bionic.time += 1;
 				// Collisions
-				this.game.physics.arcade.collide(Bionic.Player.sprite, this.platforms);
-				//this.game.physics.arcade.collide(Bionic.Player.bullets, this.platforms); //Add method to destroy the bullets instead of colliding
+				this.game.physics.arcade.collide(Bionic.Player.sprite, this.groundLayer);
+				this.game.physics.arcade.collide(Bionic.Player.bullets, this.groundLayer);
+				
 
 				// Player
-				Bionic.Player.checkControls(this.game, this.cursors, this.w, this.a, this.s, this.d, this.k, Bionic.time);
+				Bionic.Player.update(this.game, this.cursors, this.z, this.x, Bionic.time, Bionic.bats);
 				Bionic.Player.Draw();
-				// Move Platforms
-				this.propogateVelocity();
+				
 				// Enemies
-				Bionic.enemies[0].move();
+				for (i = 0; i < 10; i++) {
+					Bionic.bats[i].update();
+					Bionic.bats[i].move(Bionic.Player.sprite);
+					this.game.physics.arcade.collide(Bionic.batSprites);
+					this.game.physics.arcade.collide(Bionic.batSprites, this.groundLayer);
+					this.game.physics.arcade.overlap(Bionic.Player.bullets, Bionic.batSprites, Bionic.bulletKill, null, this);
+					
+					if (this.checkOverlap(Bionic.Player.sprite, Bionic.bats[i].sprite)) {
+						Bionic.meleeKill(Bionic.Player, Bionic.bats[i].sprite)
+					}
+				}
+				
+				//Bionic.bats.forEach(Bionic.Bat.update);
+				//Bionic.bats.forEach(Bionic.Bat.move(Bionic.Player.sprite));
+				
+				//Bionic.eyes[0].update();
+				//Bionic.eyes[0].move(Bionic.Player.sprite);
+				
+				// Revive dead enemies
+				if (Bionic.enemySpawnTime < Bionic.time && Bionic.batSprites.countDead() > 0) {
+					var b = Bionic.batSprites.getFirstDead();
+					b.revive();
+					b.reset(Math.random(0, 1000), -50);
+				}
 				break;
 			case Bionic.STATE.dead:
 				break;
@@ -114,12 +129,13 @@ Bionic.MainGame.prototype = {
 	},
 
 	render: function() {
-		this.game.debug.bodyInfo(Bionic.Player.sprite, 32, 32);
-		this.game.debug.body(Bionic.Player.sprite);
+		//this.game.debug.bodyInfo(Bionic.Player.sprite, 32, 32);
+		//this.game.debug.body(Bionic.Player.sprite);
+		//this.game.debug.body(Bionic.enemies[0].sprite);
+		//this.game.debug.body(Bionic.Player.bullets);
 	},
 
-	// Add Platform to end of screen
-	addOnePlatform: function(x, y) {
+	/*addOnePlatform: function(x, y) {
 		var platform = this.platforms.getFirstDead();
 
 		platform.reset(x, y);
@@ -137,49 +153,36 @@ Bionic.MainGame.prototype = {
 			platform.body.velocity.x = -Bionic.platformSpeed;
 			platform.body.velocity.y = 0;
 		}.bind(this));
+	},*/
+	
+	checkOverlap: function(A, B) {
+		var boundsA = A.getBounds();
+		var boundsB = B.getBounds();
+		
+		return Phaser.Rectangle.intersects(boundsA, boundsB);
 	},
 
-};
-
-
-Bionic.Enemy = function(game, x, y, sprite, scale) {
-	this.sprite = game.add.sprite(x, y, sprite);
-	this.scale = scale;
-	this.sprite.scale.x = scale;
-	this.sprite.scale.y = scale;
-	this.sprite.anchor.setTo(0.5, 1);
-	// Add this enemy to the list of Enemies
-};
-
-Bionic.Enemy.prototype = {
-	scale: 0.2,
-	facing: 'left',
-	sprite: undefined,
-	moveSpeed: 150,
-	init: function() { Bionic.enemies.push(this); },
-	move: function() {},
 };
 
 inheritsFrom = function(child, parent){
 	child.prototype = Object.create(parent.prototype);
 };
 
-Bionic.Bat = function(game, x, y, sprite, scale) {
-	this.sprite = game.add.sprite(x, y, sprite);
-	this.scale = scale;
-	this.sprite.scale.x = scale;
-	this.sprite.scale.y = scale;
-	this.sprite.anchor.setTo(0.5, 1);
-	
-	inheritsFrom(Bionic.Bat, Bionic.Enemy);
-	this.init = function(){
-		this.sprite.animations.add('fly');
-		Bionic.enemies.push(this);
-		console.log("in the list");
-	};
-	this.move = function(){
-		this.sprite.animations.play('fly', 15, true);
-	};
-	
-	return (this);
+Bionic.bulletKill = function(target, bullet) {
+	Bionic.enemySpawnTime = (Bionic.time + Bionic.spawnDealy) * Math.random(0.5, 1.5);
+	bullet.kill();
+	target.reset(0, -20);
+	target.kill();
+	Bionic.score += 5;
+	Bionic.scoreText.text = "Score: " + Bionic.score;
+};
+Bionic.hitWall = function(bullet, target) {
+	bullet.kill();
+};
+Bionic.meleeKill = function(player, target) {
+	if (Bionic.Player.melee) {
+		target.kill();
+		Bionic.score += 5;
+		Bionic.scoreText.text = "Score: " + Bionic.score;
+	}
 };

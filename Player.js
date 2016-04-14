@@ -4,14 +4,19 @@ Bionic.Player = {
 	facing: 'right',
 	scale: 0.25,
 	currState: undefined,
-	moveSpeed: 200,
+  // Movement
+	maxSpeed: 500,
+  acceleration: 1500,
+  drag: 1200,
+  gravity: 2600,
+  jumpSpeed: -800,
 	canJump: true,
-	// Gun and Grapple
-	gun: undefined,
-	gunScale: 0.05,
+	// Gun
 	bullets: undefined,
-	fireRate: 15,
+	fireRate: 16,
 	nextFire: 0,
+  bulletDamage: 10,
+	melee: false,
 
 	STATE: {
 		IDLE: 0,
@@ -19,10 +24,12 @@ Bionic.Player = {
 		RUN_FIRE: 2,
 		CROUCH: 3,
 		CROUCH_FIRE: 4,
-		JUMP: 5,
-		JUMP_FIRE: 6,
-		HURT: 7,
-		FIRE: 8,
+    RISE: 5,
+		JUMP: 6,
+		JUMP_FIRE: 7,
+		HURT: 8,
+		FIRE: 9,
+		MELEE: 10,
 	},
 
 	spawnPlayer: function(game, x, y, sprite) {
@@ -31,25 +38,28 @@ Bionic.Player = {
 		this.sprite.animations.add('idle', Phaser.Animation.generateFrameNames('Idle/', 0, 9, '.png', 2), 10, true, false);
 		this.sprite.animations.add('run', Phaser.Animation.generateFrameNames('Run/', 0, 9, '.png', 2), 15, true, false);
 		this.sprite.animations.add('crouch', Phaser.Animation.generateFrameNames('Crouch/', 0, 9, '.png', 2), 10, true, false);
-		this.sprite.animations.add('jump', Phaser.Animation.generateFrameNames('Jump/', 0, 9, '.png', 2), 5, false, false);
+    this.sprite.animations.add('rise', Phaser.Animation.generateFrameNames('Jump/', 0, 2, '.png', 2), 5, false, false);
+		this.sprite.animations.add('jump', Phaser.Animation.generateFrameNames('Jump/', 3, 9, '.png', 2), 5, false, false);
 		this.sprite.animations.add('jump_fire', Phaser.Animation.generateFrameNames('Jump/Shoot/', 0, 9, '.png', 2), 5, false, false);
 		this.sprite.animations.add('fire', Phaser.Animation.generateFrameNames('Idle/Shoot/', 0, 9, '.png', 2), 10, false, false);
 		this.sprite.animations.add('crouch_fire', Phaser.Animation.generateFrameNames('Crouch/Shoot/', 0, 3, '.png', 2), 10, false, false);
+		this.sprite.animations.add('melee', Phaser.Animation.generateFrameNames('Idle/Melee/', 0, 9, '.png', 2), 15, false, false);
 		this.sprite.anchor.setTo(0, 1);
 		// Physics
 		game.physics.enable(this.sprite, game.physics.ARCADE);
-		this.sprite.body.friction = 0;
-		this.sprite.body.mass = 100;
-		this.sprite.body.collideWorldBounds = true;
-		//this.sprite.body.bounce.x = this.sprite.body.bounce.y = 0.1;
-		// Gun / Bullets
+    this.sprite.body.maxVelocity.setTo(this.maxSpeed, this.maxSpeed * 10);
+    this.sprite.body.drag.setTo(this.drag, 0);
+    this.sprite.body.linearDamping = 1;
+		game.physics.arcade.gravity.y = this.gravity;
+		// Bullets
 		this.bullets = game.add.group();
-		this.bullets.enableBody = true;
-		this.bullets.physicsBodyType = game.physics.ARCADE;
 		this.bullets.createMultiple(50, 'bullet');
+    game.physics.enable(this.bullets, game.physics.ARCADE);
 		this.bullets.setAll('checkWorldBounds', true);
 		this.bullets.setAll('tint', 0xff00ff);
 		this.bullets.setAll('outOfBoundsKill', true);
+    this.bullets.setAll('scale.x', 2.5);
+    this.bullets.setAll('scale.y', 2.5);
 		this.bullets.setAll('body.allowGravity', false);
 	},
 
@@ -66,10 +76,10 @@ Bionic.Player = {
 				this.sprite.scale.x = -this.scale;
 				this.sprite.scale.y = this.scale;
         this.sprite.anchor.setTo(0.5, 1);
-				this.sprite.body.setSize(250, 480, 32, -20);
+				this.sprite.body.setSize(250, 480, 28, -20);
 				break;
 		}
-
+		
 		// Update Animation according to State
 		switch (this.currState) {
 			case this.STATE.IDLE:
@@ -80,22 +90,42 @@ Bionic.Player = {
 				break;
 			case this.STATE.CROUCH:
 				this.sprite.body.setSize(250, 350);
+        this.sprite.anchor.y = 1.1;
 				this.sprite.animations.play('crouch');
 				break;
 			case this.STATE.CROUCH_FIRE:
 				this.sprite.body.setSize(250, 350);
+        this.sprite.anchor.y = 1.1;
 				this.sprite.animations.play('crouch_fire');
 				this.fire(this.game, Bionic.time);
 				break;
+      case this.STATE.RISE:
+        if (this.sprite.body.velocity.y > 0 )
+          this.currState = this.STATE.JUMP;
+        else
+          this.sprite.animations.play('rise');
+        break;
 			case this.STATE.JUMP:
-				if (Math.abs(this.sprite.body.velocity.y) < 0.25 && (this.sprite.body.blocked.down || this.sprite.body.touching.down)) {
-					this.sprite.body.velocity.y = 0;
-					this.updateState(this.STATE.IDLE)
-				} else this.sprite.animations.play('jump');
+				if (this.sprite.body.blocked.down || this.sprite.body.touching.down)
+					this.updateState(this.STATE.IDLE);
+				else this.sprite.animations.play('jump');
 				break;
 			case this.STATE.FIRE:
 				this.sprite.animations.play('fire');
 				this.fire(this.game, Bionic.time);
+				break;
+			case this.STATE.MELEE:
+				this.sprite.animations.play('melee');
+				this.melee = true;
+				if(this.facing == 'left')
+					this.sprite.body.setSize(500, 480, 5, -20);
+				else
+					this.sprite.body.setSize(500, 480, 18, -20);
+				this.sprite.animations.getAnimation('melee').onComplete.add(function(){ 
+					Bionic.Player.updateState(Bionic.Player.STATE.IDLE); 
+					Bionic.Player.melee = false;
+				});
+				break;
 		}
 
 	},
@@ -104,98 +134,110 @@ Bionic.Player = {
 		this.currState = animationState;
 	},
 
-	checkControls: function(game, cursors, w, a, s, d, k) {
+	update: function(game, cursors, z, x, enemies, time) {
 
 		// Check for movement depending on state
 		switch (this.currState) {
 			case this.STATE.IDLE:
 				// Stop Walking
-				if (cursors.left.isUp && cursors.right.isUp) {
+				if (!cursors.left.isDown || !cursors.right.isDown) {
 					this.sprite.body.velocity.x = 0;
+          this.sprite.body.acceleration.x = 0;
 				}
 				// Walk Left
-				if (cursors.left.isDown || a.isDown) {
+				if (cursors.left.isDown) {
 					this.facing = 'left';
-					this.sprite.body.velocity.x = -this.moveSpeed;
+					this.sprite.body.acceleration.x -= this.acceleration;
 					this.updateState(this.STATE.RUN);
 				}
 				// Walk Right
-				if (cursors.right.isDown || d.isDown) {
+				if (cursors.right.isDown) {
 					this.facing = 'right';
-					this.sprite.body.velocity.x = this.moveSpeed;
+					this.sprite.body.acceleration.x += this.acceleration;
 					this.updateState(this.STATE.RUN);
 				}
 				// Crouch
-				if (cursors.down.isDown || s.isDown) {
+				if (cursors.down.isDown) {
 					this.updateState(this.STATE.CROUCH);
 				}
 				// Jump
-				if ((w.isDown || cursors.up.isDown) && (this.sprite.body.onFloor() || this.sprite.body.touching.down || this.sprite.body.blocked.down)) {
-					this.sprite.body.velocity.y = -250;
-					this.updateState(this.STATE.JUMP);
+				if (cursors.up.isDown && (this.sprite.body.onFloor() || this.sprite.body.touching.down || this.sprite.body.blocked.down)) {
+					this.sprite.body.velocity.y = this.jumpSpeed;
+					this.updateState(this.STATE.RISE);
 				}
 				// Shoot
-				if (k.isDown) {
+				if (z.isDown) {
 					this.updateState(this.STATE.FIRE);
+				}
+				// Melee
+				if (x.isDown) {
+					this.updateState(this.STATE.MELEE);
 				}
 				break;
 			case this.STATE.RUN:
 				// Switch Left
-				if (cursors.left.isDown || a.isDown) {
+				if (cursors.left.isDown) {
 					this.facing = 'left';
-					this.sprite.body.velocity.x = -this.moveSpeed;
+          this.sprite.body.acceleration.x = 0;
+          this.sprite.body.acceleration.x -= this.acceleration;
 				}
 				// Switch Right
-				if (cursors.right.isDown || d.isDown) {
+				if (cursors.right.isDown) {
 					this.facing = 'right';
-					this.sprite.body.velocity.x = this.moveSpeed;
+          this.sprite.body.acceleration.x = 0;
+					this.sprite.body.acceleration.x += this.acceleration;
 				}
-				// Stop Walking
+				// Stop Running
 				if (cursors.left.isUp && cursors.right.isUp) {
-					this.sprite.body.velocity.x = 0;
+          this.sprite.body.acceleration.x = 0;
 					this.updateState(this.STATE.IDLE);
 				}
 				// Jump
-				if ((w.isDown || cursors.up.isDown) && (this.sprite.body.onFloor() || this.sprite.body.touching.down || this.sprite.body.blocked.down)) {
-					this.sprite.body.velocity.y = -250;
-					this.updateState(this.STATE.JUMP);
+				if (cursors.up.isDown && (this.sprite.body.onFloor() || this.sprite.body.touching.down || this.sprite.body.blocked.down)) {
+					this.sprite.body.velocity.y = this.jumpSpeed;
+					this.updateState(this.STATE.RISE);
 				}
 				// Crouch
-				if (cursors.down.isDown || s.isDown) {
+				if (cursors.down.isDown) {
 					this.sprite.body.velocity.x = 0;
 					this.updateState(this.STATE.CROUCH);
 				}
 				break;
 			case this.STATE.CROUCH:
 				// Stand up
-				if (cursors.down.isUp && s.isUp) {
+				if (cursors.down.isUp) {
 					this.updateState(this.STATE.IDLE);
 				}
 				// Switch Left
-				if (cursors.left.isDown || a.isDown) {
+				if (cursors.left.isDown) {
 					this.facing = 'left';
 				}
 				// Switch Right
-				if (cursors.right.isDown || d.isDown) {
+				if (cursors.right.isDown) {
 					this.facing = 'right';
 				}
 				// Shoot
-				if (k.isDown) {
+				if (z.isDown) {
 					this.updateState(this.STATE.CROUCH_FIRE);
 				}
 				break;
 			case this.STATE.FIRE:
 				// Cease Fire
-				if (k.isUp)
+				if (z.isUp) {
 					this.updateState(this.STATE.IDLE);
+        }
+        // Crouch
+        if (cursors.down.isDown) {
+          this.updateState(this.STATE.CROUCH_FIRE);
+        }
 				// Switch Left
-				if (cursors.left.isDown || a.isDown) {
+				if (cursors.left.isDown) {
 					this.facing = 'left';
 					this.sprite.body.velocity.x = -this.moveSpeed;
 					this.updateState(this.STATE.RUN);
 				}
 				// Switch Right
-				if (cursors.right.isDown || d.isDown) {
+				if (cursors.right.isDown) {
 					this.facing = 'right';
 					this.sprite.body.velocity.x = this.moveSpeed;
 					this.updateState(this.STATE.RUN);
@@ -203,22 +245,27 @@ Bionic.Player = {
 				break;
 			case this.STATE.CROUCH_FIRE:
 				// Cease Fire
-				if (k.isUp)
+				if (z.isUp)
 					this.updateState(this.STATE.CROUCH);
         if (cursors.down.isUp) {
           this.updateState(this.STATE.FIRE);
         }
 				// Switch Left
-				if (cursors.left.isDown || a.isDown) {
+				if (cursors.left.isDown) {
 					this.facing = 'left';
 				}
 				// Switch Right
-				if (cursors.right.isDown || d.isDown) {
+				if (cursors.right.isDown) {
 					this.facing = 'right';
 				}
 				break;
 		}
-
+    
+    // Check bullets
+    this.bullets.forEach(function(bullet){
+      if (bullet.body.velocity.x === 0 && bullet.body.velocity.y === 0)
+        bullet.kill();
+    });
 	},
 
 	fire: function(game, time) {
@@ -227,13 +274,13 @@ Bionic.Player = {
 			var bullet = this.bullets.getFirstDead();
 			switch (this.facing) {
 				case 'left':
-          if (this.currState == this.STATE.CROUCH_FIRE) bullet.reset(this.sprite.x - 35, this.sprite.y - 60);
-            else bullet.reset(this.sprite.x - 35, this.sprite.y - 90);
+          if (this.currState == this.STATE.CROUCH_FIRE) bullet.reset(this.sprite.x - 35, this.sprite.y - 75);
+            else bullet.reset(this.sprite.x - 35, this.sprite.y - 95);
 					bullet.body.velocity.x = -500;
 					break;
 				case 'right':
-          if (this.currState == this.STATE.CROUCH_FIRE) bullet.reset(this.sprite.x + 105, this.sprite.y - 60);
-            else bullet.reset(this.sprite.x + 105, this.sprite.y - 90);
+          if (this.currState == this.STATE.CROUCH_FIRE) bullet.reset(this.sprite.x + 105, this.sprite.y - 75);
+            else bullet.reset(this.sprite.x + 105, this.sprite.y - 95);
 					bullet.body.velocity.x = 500;
 					break;
 			}
